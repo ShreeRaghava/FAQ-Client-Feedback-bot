@@ -1,4 +1,4 @@
-# FAQ & Client Feedback Bot — Opal + Google Cloud Functions 
+# FAQ & Client Feedback Bot - Opal + Google Cloud Functions 
 
 This repository is a demo implementation for:
 - An **FAQ bot** that answers common questions using an AI node in Google Opal.
