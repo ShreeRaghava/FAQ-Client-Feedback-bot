@@ -49,7 +49,7 @@ Important: This repo is for demonstration. Do not commit real secrets. Replace p
    git push -u origin main
    ```
 
-## Notes for portfolio
+## Notes
 - Update `README.md` with your role and architecture decisions.
 - Replace mock storage with a real DB (Firestore / Airtable) only if deploying a real service.
 - Keep API keys and secrets out of the repo.
