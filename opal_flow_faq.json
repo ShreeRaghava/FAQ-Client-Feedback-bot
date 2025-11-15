@@ -1,0 +1,149 @@
+{
+  "flow_id": "faq-feedback-flow-v1",
+  "metadata": {
+    "name": "WhatsApp FAQ & Feedback",
+    "description": "FAQ answering and feedback collection flow",
+    "created_by": "automation-team",
+    "version": "1.0"
+  },
+  "nodes": [
+    {
+      "id": "n_webhook",
+      "type": "webhook",
+      "name": "Entry Webhook - WhatsApp",
+      "config": {
+        "path": "/opal/webhook/whatsapp",
+        "method": "POST"
+      },
+      "next": "n_normalize"
+    },
+    {
+      "id": "n_normalize",
+      "type": "function",
+      "name": "Normalize",
+      "config": {
+        "script": "/* extract message_text, phone_number */"
+      },
+      "next": "n_intent"
+    },
+    {
+      "id": "n_intent",
+      "type": "ai",
+      "name": "Intent Extractor",
+      "config": {
+        "system_prompt": "Return JSON: { intent: 'faq'|'feedback'|'other', question?: string, rating?: number, comments?: string }"
+      },
+      "next": "n_route"
+    },
+    {
+      "id": "n_route",
+      "type": "switch",
+      "name": "Route by intent",
+      "config": {
+        "cases": [
+          {
+            "condition": "intent == 'faq'",
+            "target": "n_call_faq"
+          },
+          {
+            "condition": "intent == 'feedback'",
+            "target": "n_collect_feedback"
+          }
+        ],
+        "default": "n_fallback"
+      }
+    },
+    {
+      "id": "n_call_faq",
+      "type": "http_request",
+      "name": "Call /faq",
+      "config": {
+        "method": "POST",
+        "url": "{{CLOUD_FUNCTION_URL}}/faq",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"question\":\"{{question}}\"}"
+      },
+      "next": "n_send_faq_answer"
+    },
+    {
+      "id": "n_send_faq_answer",
+      "type": "send_message",
+      "name": "Send FAQ Answer",
+      "config": {
+        "channel": "whatsapp",
+        "template": "{{response.answer}}"
+      },
+      "next": "n_end"
+    },
+    {
+      "id": "n_collect_feedback",
+      "type": "send_message",
+      "name": "Ask for Feedback",
+      "config": {
+        "channel": "whatsapp",
+        "template": "Thanks for using our service. Could you rate your experience 1-5 and add any comments?"
+      },
+      "next": "n_wait_feedback"
+    },
+    {
+      "id": "n_wait_feedback",
+      "type": "wait",
+      "name": "Wait for feedback reply",
+      "config": {
+        "timeout_seconds": 600
+      },
+      "next": "n_parse_feedback"
+    },
+    {
+      "id": "n_parse_feedback",
+      "type": "ai",
+      "name": "Parse Feedback",
+      "config": {
+        "system_prompt": "Extract JSON { rating: number, comments: string } from user's message. If rating missing, set to null."
+      },
+      "next": "n_send_feedback_to_cf"
+    },
+    {
+      "id": "n_send_feedback_to_cf",
+      "type": "http_request",
+      "name": "Send feedback to Cloud Function",
+      "config": {
+        "method": "POST",
+        "url": "{{CLOUD_FUNCTION_URL}}/feedback",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"name\":\"{{sender_name}}\",\"email\":null,\"rating\":{{rating}},\"comments\":\"{{comments}}\"}"
+      },
+      "next": "n_thanks"
+    },
+    {
+      "id": "n_thanks",
+      "type": "send_message",
+      "name": "Thank User",
+      "config": {
+        "channel": "whatsapp",
+        "template": "Thanks! Your feedback has been recorded."
+      },
+      "next": "n_end"
+    },
+    {
+      "id": "n_fallback",
+      "type": "send_message",
+      "name": "Fallback",
+      "config": {
+        "channel": "whatsapp",
+        "template": "Sorry, I didn't understand. You can ask a question or type 'feedback' to leave feedback."
+      },
+      "next": "n_end"
+    },
+    {
+      "id": "n_end",
+      "type": "end",
+      "name": "End Flow",
+      "config": {}
+    }
+  ]
+}
